@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sample Tally</title>
+<style>
+:root{--bg:#eef1f4;--card:#fff;--tx:#14202b;--mu:#5d6b78;--ac:#2457c5;--ok:#1f7a4d;--wa:#a8620a;--er:#b3261e;--bd:#d5dbe1}
+@media(prefers-color-scheme:dark){:root{--bg:#0f151b;--card:#18212a;--tx:#e6ebf0;--mu:#93a1ae;--ac:#7aa2ff;--ok:#5fd18f;--wa:#f0b35a;--er:#ff8a80;--bd:#2a3743}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+main{max-width:640px;margin:0 auto;padding:12px}
+header{display:flex;justify-content:space-between;align-items:center;gap:8px}
+h1{font-size:18px;margin:0}
+#st{font-size:13px;color:var(--mu)}
+.tally{display:flex;align-items:baseline;gap:8px;margin:10px 0 4px}
+.tally b{font-size:44px;line-height:1}
+.tally span{color:var(--mu)}
+.bar{height:8px;background:var(--bd);border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok);width:0;transition:width .3s}
+nav{display:flex;gap:6px;margin:12px 0}
+nav button{flex:1;padding:10px 4px;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:8px;font:inherit;cursor:pointer}
+nav button[aria-selected=true]{background:var(--ac);border-color:var(--ac);color:#fff}
+button:focus-visible,input:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:12px}
+input[type=text],input[type=password],input[type=search]{width:100%;padding:11px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+.row{display:flex;gap:8px;margin-top:8px}
+.btn{padding:10px 14px;border:0;border-radius:8px;background:var(--ac);color:#fff;font:inherit;cursor:pointer}
+.btn.alt{background:transparent;color:var(--ac);border:1px solid var(--ac)}
+.btn.danger{background:var(--er);color:#fff}
+#cam{width:100%;min-height:200px;background:#000;border-radius:8px;overflow:hidden}
+#flash{margin-top:10px;padding:16px;border-radius:10px;text-align:center;font-size:20px;font-weight:600;color:#fff;display:none}
+#flash small{display:block;font-size:14px;font-weight:400;opacity:.9}
+#flash.ok{background:var(--ok);display:block}
+#flash.dup{background:var(--wa);display:block}
+#flash.err{background:var(--er);display:block}
+ul{list-style:none;margin:8px 0 0;padding:0}
+li{display:flex;justify-content:space-between;gap:8px;padding:9px 0;border-top:1px solid var(--bd)}
+li small{color:var(--mu);display:block}
+.empty{color:var(--mu);padding:12px 0}
+@media(prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+</head>
+<body>
+<main>
+<header><h1>Sample Tally</h1><span id="st">Connecting…</span></header>
+<div class="tally"><b id="n">0</b><span id="of">of 0 samples received</span></div>
+<div class="bar"><i id="pb"></i></div>
+
+<nav role="tablist">
+<button role="tab" data-t="scan" aria-selected="true">Scan</button>
+<button role="tab" data-t="pending" aria-selected="false">Missing</button>
+<button role="tab" data-t="done" aria-selected="false">Received</button>
+<button role="tab" data-t="setup" aria-selected="false">Setup</button>
+</nav>
+
+<section id="scan" class="card">
+<div id="cam"></div>
+<div class="row"><button class="btn" id="camBtn">Start camera</button></div>
+<div class="row"><input type="text" id="man" placeholder="Type barcode" autocomplete="off" inputmode="text"><button class="btn" id="manBtn">Add</button></div>
+<div id="flash" role="status" aria-live="polite"></div>
+</section>
+
+<section id="pending" class="card" hidden>
+<input type="search" id="q1" placeholder="Search name or barcode">
+<ul id="l1"></ul>
+<div class="row"><button class="btn alt" id="ex1">Export missing CSV</button></div>
+</section>
+
+<section id="done" class="card" hidden>
+<input type="search" id="q2" placeholder="Search name or barcode">
+<ul id="l2"></ul>
+<div class="row"><button class="btn alt" id="ex2">Export received CSV</button></div>
+</section>
+
+<section id="setup" class="card" hidden>
+<label for="code">Access code</label>
+<input type="password" id="code" autocomplete="off">
+<div class="row"><button class="btn" id="saveCode">Save code</button></div>
+<hr style="border:0;border-top:1px solid var(--bd);margin:16px 0">
+<label for="file">Upload namelist (CSV with columns: name, barcode)</label>
+<input type="file" id="file" accept=".csv,text/csv">
+<p id="pv" class="empty"></p>
+<div class="row"><button class="btn danger" id="up" disabled>Replace namelist</button></div>
+<p class="empty">Uploading replaces the whole list and clears all received marks, for every device.</p>
+</section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+let code = localStorage.getItem('code') || '', people = [], scanner = null, last = '', lastT = 0, pending = null;
+let dev = localStorage.getItem('dev');
+if (!dev) { dev = 'D' + Math.random().toString(36).slice(2, 5).toUpperCase(); localStorage.setItem('dev', dev); }
+
+async function api(path, body) {
+  const r = await fetch('/api/' + path, {
+    method: body ? 'POST' : 'GET',
+    headers: { 'x-code': code, 'content-type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || 'Error ' + r.status);
+  return d;
+}
+
+let v = 0, base = [], det = {}, gotSet = new Set();
+function merge() {
+  people = base.map(p => ({ ...p, received_at: gotSet.has(p.barcode) ? ((det[p.barcode] || {}).t || 1) : null, device: (det[p.barcode] || {}).d || '' }));
+}
+async function load() {
+  try {
+    const r = await api('list?v=' + v);
+    if (r.people) { base = r.people; v = r.v; }
+    gotSet = new Set(r.got);
+    if (!$('#done').hidden && gotSet.size) det = await api('details');
+    merge(); $('#st').textContent = 'Live · ' + dev; render();
+  } catch (e) { $('#st').textContent = e.message; }
+}
+
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function hit(p, q) { q = q.toLowerCase(); return !q || p.name.toLowerCase().includes(q) || p.barcode.toLowerCase().includes(q); }
+
+function render() {
+  const got = people.filter(p => p.received_at), miss = people.filter(p => !p.received_at);
+  $('#n').textContent = got.length;
+  $('#of').textContent = 'of ' + people.length + ' samples received · ' + miss.length + ' missing';
+  $('#pb').style.width = people.length ? (got.length / people.length * 100) + '%' : '0';
+  const q1 = $('#q1').value, q2 = $('#q2').value;
+  const m = miss.filter(p => hit(p, q1)), d = got.filter(p => hit(p, q2)).sort((a, b) => b.received_at - a.received_at);
+  $('#l1').innerHTML = m.length ? m.map(p => `<li><div>${esc(p.name)}<small>${esc(p.barcode)}</small></div></li>`).join('')
+    : `<li class="empty">${people.length ? 'Everyone has provided a sample.' : 'No namelist yet. Upload one in Setup.'}</li>`;
+  $('#l2').innerHTML = d.length ? d.map(p => `<li><div>${esc(p.name)}<small>${esc(p.barcode)} · ${new Date(p.received_at).toLocaleTimeString()} · ${esc(p.device || '')}</small></div><button class="btn alt" data-undo="${esc(p.barcode)}">Undo</button></li>`).join('')
+    : '<li class="empty">No samples received yet.</li>';
+}
+
+function flash(cls, title, sub) {
+  const f = $('#flash'); f.className = cls; f.innerHTML = esc(title) + (sub ? '<small>' + esc(sub) + '</small>' : '');
+  if (navigator.vibrate) navigator.vibrate(cls === 'ok' ? 60 : [80, 60, 80]);
+  try {
+    const a = new (window.AudioContext || window.webkitAudioContext)(), o = a.createOscillator();
+    o.frequency.value = cls === 'ok' ? 880 : 300; o.connect(a.destination); o.start(); o.stop(a.currentTime + .12);
+  } catch (e) {}
+}
+
+async function submit(bc) {
+  bc = bc.trim(); const now = Date.now();
+  if (!bc || (bc === last && now - lastT < 2500)) return;
+  last = bc; lastT = now;
+  try {
+    const r = await api('scan', { barcode: bc, device: dev });
+    if (r.status === 'ok') flash('ok', r.name, 'Received');
+    else if (r.status === 'dup') flash('dup', r.name, 'Already scanned at ' + new Date(r.received_at).toLocaleTimeString() + (r.device ? ' on ' + r.device : ''));
+    else flash('err', 'Not on the namelist', bc);
+    load();
+  } catch (e) { flash('err', e.message); }
+}
+
+async function toggleCam() {
+  if (scanner) { await scanner.stop().catch(() => {}); scanner = null; $('#camBtn').textContent = 'Start camera'; return; }
+  try {
+    scanner = new Html5Qrcode('cam');
+    await scanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 260, height: 140 } }, t => submit(t), () => {});
+    $('#camBtn').textContent = 'Stop camera';
+  } catch (e) { scanner = null; flash('err', 'Camera unavailable', 'Allow camera access and open the page over HTTPS.'); }
+}
+
+function showTab(t) {
+  document.querySelectorAll('nav button').forEach(b => b.setAttribute('aria-selected', b.dataset.t === t));
+  ['scan', 'pending', 'done', 'setup'].forEach(id => $('#' + id).hidden = id !== t);
+  if (t !== 'scan' && scanner) toggleCam();
+  if (t === 'done') load();
+}
+
+function parseCSV(t) {
+  t = t.replace(/^\uFEFF/, ''); const rows = []; let r = [], c = '', q = false;
+  for (let i = 0; i < t.length; i++) {
+    const ch = t[i];
+    if (q) { if (ch === '"') { if (t[i + 1] === '"') { c += '"'; i++; } else q = false; } else c += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === ',') { r.push(c); c = ''; }
+    else if (ch === '\n' || ch === '\r') { if (ch === '\r' && t[i + 1] === '\n') i++; r.push(c); rows.push(r); r = []; c = ''; }
+    else c += ch;
+  }
+  if (c || r.length) { r.push(c); rows.push(r); }
+  return rows.filter(r => r.some(x => x.trim()));
+}
+
+function toCSV(rows) { return rows.map(r => r.map(v => '"' + String(v ?? '').replace(/"/g, '""') + '"').join(',')).join('\r\n'); }
+function download(name, rows) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF' + toCSV(rows)], { type: 'text/csv' }));
+  a.download = name; a.click();
+}
+
+$('#file').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  const rows = parseCSV(await f.text()); if (!rows.length) return;
+  const h = rows[0].map(x => x.trim().toLowerCase());
+  const ni = h.indexOf('name'), bi = h.indexOf('barcode'), hasH = ni > -1 && bi > -1;
+  const n = hasH ? ni : 0, b = hasH ? bi : 1;
+  pending = rows.slice(hasH ? 1 : 0).map(r => ({ name: (r[n] || '').trim(), barcode: (r[b] || '').trim() })).filter(p => p.name && p.barcode);
+  $('#pv').textContent = pending.length + ' people ready. First: ' + (pending[0] ? pending[0].name + ' / ' + pending[0].barcode : 'none');
+  $('#up').disabled = !pending.length;
+};
+$('#up').onclick = async () => {
+  if (!pending || !confirm('Replace the namelist for all devices? Received marks will be cleared.')) return;
+  try { const r = await api('upload', { people: pending }); $('#pv').textContent = 'Uploaded ' + r.count + ' people.'; pending = null; $('#up').disabled = true; load(); }
+  catch (e) { $('#pv').textContent = e.message; }
+};
+
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => showTab(b.dataset.t));
+$('#camBtn').onclick = toggleCam;
+$('#manBtn').onclick = () => { submit($('#man').value); $('#man').value = ''; };
+$('#man').onkeydown = e => { if (e.key === 'Enter') $('#manBtn').click(); };
+$('#q1').oninput = $('#q2').oninput = render;
+$('#code').value = code;
+$('#saveCode').onclick = () => { code = $('#code').value; localStorage.setItem('code', code); load(); };
+$('#l2').onclick = async e => {
+  const bc = e.target.dataset.undo;
+  if (bc && confirm('Remove the received mark for ' + bc + '?')) { await api('undo', { barcode: bc }).catch(() => {}); load(); }
+};
+$('#ex1').onclick = () => download('missing.csv', [['name', 'barcode'], ...people.filter(p => !p.received_at).map(p => [p.name, p.barcode])]);
+$('#ex2').onclick = async () => { det = await api('details'); merge(); download('received.csv', [['name', 'barcode', 'received_at', 'device'], ...people.filter(p => p.received_at).map(p => [p.name, p.barcode, new Date(p.received_at).toISOString(), p.device])]); };
+
+if (!code) showTab('setup');
+load(); setInterval(() => { if (!document.hidden) load(); }, 3000);
+</script>
+</body>
+</html>

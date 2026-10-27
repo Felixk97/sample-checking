@@ -52,7 +52,7 @@ export default async (req) => {
     if (!gk && !ak) return j({ error: 'GEMINI_API_KEY is not set in Netlify. Use the on-device reader.' }, 500);
     let r;
     if (gk) {
-      r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${Netlify.env.get('GEMINI_MODEL') || 'gemini-2.5-flash'}:generateContent`, {
+      r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${Netlify.env.get('GEMINI_MODEL') || 'gemini-3.8-flash'}:generateContent`, {
         method: 'POST', headers: { 'x-goog-api-key': gk, 'content-type': 'application/json' },
         body: JSON.stringify({ contents: [{ parts: [{ inline_data: { mime_type: 'image/jpeg', data: body.image } }, { text: PROMPT }] }], generationConfig: { temperature: 0, responseMimeType: 'application/json' } })
       });

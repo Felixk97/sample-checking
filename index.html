@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#eaf8f7">
+<title>Sample Tally</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light;--bg:#eaf8f7;--card:#fff;--tx:#0e2a33;--mu:#587a82;--ac:#0b9c93;--ok:#0f9f6e;--wa:#c97700;--er:#e03e63;--bd:#cdeceb;--g:linear-gradient(135deg,#14c8b8,#3b9dff)}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--tx);font:600 16px/1.45 Nunito,ui-rounded,system-ui,sans-serif;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+main{max-width:640px;margin:0 auto;padding:0 12px calc(72px + env(safe-area-inset-bottom))}
+.top{position:sticky;top:0;z-index:4;background:var(--bg);margin:0 -12px;padding:calc(8px + env(safe-area-inset-top)) 22px 8px}
+header{display:flex;justify-content:space-between;align-items:center;gap:8px}
+h1{font-size:20px;font-weight:900;margin:0}
+#st{font-size:13px;color:var(--mu)}
+.tally{display:flex;align-items:baseline;gap:8px;margin:8px 0 6px}
+.tally b{font-size:30px;font-weight:900;line-height:1;color:#22b8e0}
+.tally span{color:var(--mu);font-size:14px}
+.bar{height:12px;background:var(--bd);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#14c8b8,#3b9dff);transition:width .4s}
+nav{display:flex;gap:6px;margin-top:10px}
+nav button{flex:1;min-height:64px;padding:10px 4px;border:2px solid var(--bd);background:var(--card);color:var(--tx);border-radius:18px;font:inherit;font-weight:800;font-size:13px;line-height:1.35;cursor:pointer}
+nav button[aria-selected=true]{background:var(--g);border-color:transparent;color:#fff}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+.card{background:var(--card);border-radius:22px;padding:14px;margin:12px 0;box-shadow:0 6px 20px rgba(11,156,147,.15)}
+label{font-weight:800}
+input[type=text],input[type=password],input[type=search]{width:100%;padding:14px;border:2px solid var(--bd);border-radius:16px;background:var(--bg);color:var(--tx);font:inherit}
+.row{display:flex;gap:8px;margin-top:8px}
+input[type=file]{width:100%;padding:10px;border:2px dashed var(--bd);border-radius:16px;background:var(--bg);color:var(--mu);font:inherit;font-size:14px}
+input[type=file]::file-selector-button{margin-right:12px;padding:10px 18px;border:0;border-radius:99px;background:var(--g);color:#fff;font:inherit;font-weight:800;cursor:pointer}
+#eng{border:2px solid var(--bd)!important;border-radius:16px!important;font-weight:700}
+.btn{padding:13px 18px;min-height:48px;border:0;border-radius:99px;background:var(--g);color:#fff;font:inherit;font-weight:800;cursor:pointer;transition:transform .1s}
+.btn:active{transform:scale(.96)}
+.btn.alt{background:transparent;color:var(--ac);border:2px solid var(--ac)}
+.btn.danger{background:var(--er)}
+.btn:disabled{opacity:.5}
+#cam{width:100%;min-height:280px;background:#000;border-radius:18px;overflow:hidden}
+#flash{position:fixed;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top));z-index:20;max-width:616px;margin:0 auto;padding:20px 16px;border-radius:22px;text-align:center;font-size:24px;font-weight:900;color:#fff;display:none;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+#flash small{display:block;font-size:15px;font-weight:700;opacity:.95}
+#flash.ok{background:linear-gradient(135deg,#10b981,#14b8c8);display:block}
+#flash.dup{background:linear-gradient(135deg,#f59e0b,#ff7b54);display:block}
+#flash.err{background:linear-gradient(135deg,#ef476f,#ff7b54);display:block}
+ul{list-style:none;margin:8px 0 0;padding:0}
+li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:13px 0;font-size:17px;font-weight:800;border-top:2px dashed var(--bd)}
+li small{color:var(--mu);display:block;font-weight:600}
+.rv{display:grid;grid-template-columns:1fr 128px 44px;gap:6px;margin-top:8px}.rv small{grid-column:1/-1;color:var(--wa)}.rv.f input{border-color:var(--wa)}.rv .btn{padding:0;min-height:44px}
+.empty{color:var(--mu);padding:12px 0}
+@media(prefers-reduced-motion:reduce){.bar i,.btn{transition:none}}
+#bq{width:auto;max-width:100%;margin-top:4px;padding:4px 14px;border:0;border-radius:99px;background:var(--g);color:#fff;font-size:13px;font-weight:800}
+#bnote{font-size:12px;color:var(--mu);margin-top:2px;max-width:62vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#bnote:empty{display:none}
+#bq option{color:var(--tx);background:var(--card)}
+select{width:100%;padding:14px;border:2px solid var(--bd);border-radius:16px;background:var(--bg);color:var(--tx);font:inherit;font-weight:700}
+input[type=checkbox]{width:22px;height:22px;accent-color:var(--ac);flex:none}
+li label{min-width:0}
+#st{font-size:12px;text-align:right;line-height:1.25;max-width:150px}
+.fc{display:block;margin-top:6px;font:800 22px ui-monospace,Menlo,monospace;letter-spacing:1px}
+#flash{word-break:break-word}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:8px}
+.stat{background:var(--bg);border-radius:16px;padding:12px;text-align:center}
+.stat b{display:block;font-size:26px;font-weight:900}
+.stat span{font-size:12px;color:var(--mu)}
+nav button{font-size:12px!important;padding:4px 1px!important}
+</style>
+</head>
+<body>
+<main>
+<div class="top">
+<header><div><h1>🧪 Sample Tally</h1><select id="bq" aria-label="Choose company / PIC list"></select><div id="bnote"></div></div><div style="display:flex;gap:8px;align-items:center"><span id="st">Connecting…</span><button class="btn alt" id="rf" style="padding:8px 18px;min-height:44px">Refresh</button></div></header>
+<div class="tally"><b id="n">0</b><span id="of">of 0 samples received</span></div>
+<div class="bar"><i id="pb"></i></div>
+<nav role="tablist">
+<button role="tab" data-t="scan" aria-selected="true">📷<br>Scan</button>
+<button role="tab" data-t="pending" aria-selected="false">⏳<br>Missing</button>
+<button role="tab" data-t="done" aria-selected="false">✅<br>Received</button>
+<button role="tab" data-t="stats" aria-selected="false">📊<br>Stats</button>
+<button role="tab" data-t="setup" aria-selected="false">⚙️<br>Setup</button>
+</nav>
+</div>
+
+<section id="scan" class="card">
+<div id="cam"></div>
+<div class="row"><button class="btn" id="camBtn">Start camera</button><button class="btn alt" id="torch" hidden>Flashlight</button></div>
+<div class="row"><input type="text" id="man" placeholder="Type or scan barcode" autocomplete="off"><button class="btn" id="manBtn">Add</button></div>
+<label style="display:flex;gap:10px;align-items:center;margin-top:12px;font-size:14px"><input type="checkbox" id="hw"> Barcode scanner mode (keeps the cursor in the box, no on-screen keyboard)</label>
+</section>
+
+<section id="pending" class="card" hidden>
+<input type="search" id="q1" placeholder="Search name or barcode">
+<div class="row"><button class="btn alt" id="selAll">Select all shown</button><button class="btn danger" id="rmSel" disabled>Remove selected (0)</button></div>
+<ul id="l1"></ul>
+<div class="row"><button class="btn alt" id="ex1">Export missing CSV</button></div>
+</section>
+
+<section id="done" class="card" hidden>
+<input type="search" id="q2" placeholder="Search name or barcode">
+<ul id="l2"></ul>
+<div class="row"><button class="btn alt" id="ex2">Export received CSV</button></div>
+</section>
+
+<section id="stats" class="card" hidden>
+<div class="grid" id="sg"></div>
+<h3 style="margin:16px 0 0;font-size:16px">Recent unknown and duplicate scans</h3>
+<ul id="se"></ul>
+</section>
+
+<section id="setup" class="card" hidden>
+<label for="code">Access code</label>
+<input type="password" id="code" autocomplete="off">
+<div class="row"><button class="btn" id="saveCode">Save</button></div>
+<hr style="border:0;border-top:2px dashed var(--bd);margin:16px 0">
+<label for="cs">Whose namelist is this?</label>
+<select id="cs"></select>
+<input type="text" id="company" placeholder="New name, e.g. Aisha" autocomplete="off" style="margin-top:8px;display:none">
+<p class="empty" style="padding:4px 0 10px">Scanning staff choose this name at the top of the page. Upload again with the same name to replace or add to that list.</p>
+<label for="note" style="display:block">Remark (event / company / date)</label>
+<input type="text" id="note" maxlength="200" placeholder="e.g. Health screening, ABC Sdn Bhd, 28 Oct 2026" autocomplete="off">
+<div class="row" style="margin:8px 0 10px"><button class="btn alt" id="saveNote">Save remark</button></div>
+<div class="row" style="margin:0 0 10px"><button class="btn alt" id="tpl">Download template</button></div>
+<label for="file">Upload namelist (CSV with columns: name, barcode)</label>
+<input type="file" id="file" accept=".csv,text/csv">
+<p id="pv" class="empty"></p>
+<div class="row" id="rvb" style="display:none"><button class="btn" id="pAdd">Add to current list</button><button class="btn danger" id="pRep">Replace list</button></div>
+<div id="rv"></div>
+<p class="empty">Replace list clears all received marks for the selected name, on every device.</p>
+<hr style="border:0;border-top:2px dashed var(--bd);margin:16px 0">
+<button class="btn danger" id="clr">Clear the selected list (after the event)</button>
+<p class="empty">Deletes that name's namelist and all its scan records. Export the received list first. The names KT, Viliam and Felix always stay in the picker.</p>
+</section>
+<div id="flash" role="status" aria-live="polite"></div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+let labels = {}, notes = {}, noteDirty = false;
+let busy = false, pend = false, lastSync = 0, ev = [], ac = null;
+let queue = (() => { try { return JSON.parse(localStorage.getItem('q') || '[]'); } catch (e) { return []; } })();
+const slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30) || 'main';
+const PRESETS = ['KT', 'Viliam', 'Felix'];
+let code = localStorage.getItem('code') || '', batch = localStorage.getItem('batch') || slug(PRESETS[0]);
+let people = [], scanner = null, last = '', lastT = 0, wl = null, cur = 'scan', pr = [], sel = new Set(), shown = [];
+let v = 0, base = [], det = {}, gotSet = new Set();
+let dev = localStorage.getItem('dev');
+if (!dev) { dev = 'D' + Math.random().toString(36).slice(2, 5).toUpperCase(); localStorage.setItem('dev', dev); }
+
+async function api(path, body, list) {
+  const r = await fetch('/api/' + path, {
+    method: body ? 'POST' : 'GET',
+    headers: { 'x-code': code, 'x-list': encodeURIComponent(list || batch), 'content-type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+    signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || 'Error ' + r.status);
+  return d;
+}
+const isNet = e => e instanceof TypeError || e.name === 'TimeoutError' || e.name === 'AbortError';
+function saveQ() { localStorage.setItem('q', JSON.stringify(queue)); }
+function setSync(k, msg) {
+  const t = lastSync ? new Date(lastSync).toLocaleTimeString() : 'never', q = queue.length ? ' · ' + queue.length + ' waiting' : '';
+  $('#st').textContent = k === 'ok' ? '🟢 Online · synced ' + t + q : k === 'sync' ? '🔄 Syncing…' + q : k === 'off' ? '🔴 Offline · last sync ' + t + q : '🟠 Sync failed (' + (msg || '') + ') · last ' + t + q;
+}
+async function flushQueue() {
+  while (queue.length) {
+    const q = queue[0];
+    await api('scan', { barcode: q.b, device: q.d, t: q.t }, q.l);
+    queue.shift(); saveQ();
+  }
+}
+function merge() {
+  people = base.map(p => ({ ...p, received_at: gotSet.has(p.barcode) ? ((det[p.barcode] || {}).t || 1) : null, device: (det[p.barcode] || {}).d || '' }));
+}
+async function load() {
+  if (busy) { pend = true; return; }
+  busy = true; setSync('sync');
+  const b0 = batch;
+  try {
+    await flushQueue();
+    const r = await api('list?v=' + v);
+    if (b0 !== batch) { pend = true; return; }
+    if (r.people) { base = r.people; v = r.v; }
+    gotSet = new Set(r.got);
+    if (r.label !== undefined) labels[batch] = r.label;
+    if (r.note !== undefined) notes[batch] = r.note;
+    if ((cur === 'done' || cur === 'stats') && gotSet.size) det = await api('details');
+    if (cur === 'stats') ev = (await api('stats')).events;
+    if (b0 !== batch) { pend = true; return; }
+    queue.forEach(q => { if (q.l === batch) { gotSet.add(q.b); det[q.b] = { t: q.t, d: q.d }; } });
+    lastSync = Date.now(); merge(); setSync('ok'); render();
+  } catch (e) { setSync(isNet(e) ? 'off' : 'fail', e.message); }
+  finally { busy = false; if (pend) { pend = false; load(); } }
+}
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function hit(p, q) { q = q.toLowerCase(); return !q || p.name.toLowerCase().includes(q) || p.barcode.toLowerCase().includes(q); }
+
+function render() {
+  const got = people.filter(p => p.received_at), miss = people.filter(p => !p.received_at);
+  $('#n').textContent = got.length;
+  const o = $('#bq').selectedOptions[0]; if (o) o.textContent = '📋 ' + (labels[batch] || batch) + ' (' + people.length + ')';
+  $('#bnote').textContent = notes[batch] || '';
+  $('#of').textContent = 'of ' + people.length + ' samples received · ' + miss.length + ' missing';
+  $('#pb').style.width = people.length ? (got.length / people.length * 100) + '%' : '0';
+  document.querySelector('[data-t=pending]').innerHTML = '⏳<br>Missing (' + miss.length + ')';
+  document.querySelector('[data-t=done]').innerHTML = '✅<br>Received (' + got.length + ')';
+  shown = miss.filter(p => hit(p, $('#q1').value));
+  const d = got.filter(p => hit(p, $('#q2').value)).sort((a, b) => b.received_at - a.received_at);
+  const ms = new Set(miss.map(p => p.barcode)); sel.forEach(b => { if (!ms.has(b)) sel.delete(b); });
+  $('#l1').innerHTML = shown.length ? shown.map(p => `<li><label style="display:flex;gap:12px;align-items:center;flex:1;cursor:pointer"><input type="checkbox" data-s="${esc(p.barcode)}"${sel.has(p.barcode) ? ' checked' : ''}><div>${esc(p.name)}<small>${esc(p.barcode)}</small></div></label></li>`).join('')
+    : `<li class="empty">${people.length ? '🎉 Everyone is in!' : '👋 No namelist yet. Add one in Setup.'}</li>`;
+  $('#rmSel').textContent = 'Remove selected (' + sel.size + ')'; $('#rmSel').disabled = !sel.size;
+  $('#l2').innerHTML = d.length ? d.map(p => `<li><div>${esc(p.name)}<small>${esc(p.barcode)} · ${new Date(p.received_at).toLocaleTimeString()} · ${esc(p.device || '')}</small></div><button class="btn alt" data-undo="${esc(p.barcode)}">Undo</button></li>`).join('')
+    : '<li class="empty">Nothing yet. Time to scan! 📷</li>';
+  if (cur === 'stats') renderStats();
+}
+function renderStats() {
+  const tot = people.length, got = people.filter(p => p.received_at).length, pct = tot ? Math.round(got / tot * 100) : 0;
+  const un = ev.filter(e => e.type === 'u').length, du = ev.filter(e => e.type === 'd').length;
+  $('#sg').innerHTML = [['Expected', tot], ['Received', got], ['Outstanding', tot - got], ['Completed', pct + '%'], ['Unknown scans', un], ['Duplicate attempts', du]].map(([k, x]) => `<div class="stat"><b>${x}</b><span>${k}</span></div>`).join('');
+  const recent = [...ev].sort((a, b) => b.t - a.t).slice(0, 10);
+  $('#se').innerHTML = recent.length ? recent.map(e => `<li><div>${e.type === 'u' ? '🤔 Unknown' : '⚠️ Duplicate'} · ${esc(e.b)}<small>${new Date(e.t).toLocaleTimeString()} · ${esc(e.d || '')}</small></div></li>`).join('') : '<li class="empty">No problems so far 🎉</li>';
+}
+
+function beep(seq) {
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.resume) ac.resume();
+    let t = ac.currentTime;
+    seq.forEach(([f, d, ty]) => { const o = ac.createOscillator(); o.type = ty || 'sine'; o.frequency.value = f; o.connect(ac.destination); o.start(t); o.stop(t + d); t += d + 0.07; });
+  } catch (e) {}
+}
+function flash(cls, title, sub, bc) {
+  const f = $('#flash'); f.className = cls;
+  f.innerHTML = esc(title) + (bc ? '<span class="fc">' + esc(bc) + '</span>' : '') + (sub ? '<small>' + esc(sub) + '</small>' : '');
+  clearTimeout(f._t); f._t = setTimeout(() => { f.className = ''; }, cls === 'ok' ? 3000 : 6000); f.onclick = () => { f.className = ''; };
+  if (navigator.vibrate) navigator.vibrate(cls === 'ok' ? 60 : cls === 'dup' ? [80, 60, 80] : [300]);
+  beep(cls === 'ok' ? [[880, 0.12]] : cls === 'dup' ? [[520, 0.12], [520, 0.12]] : [[220, 0.4, 'sawtooth']]);
+}
+
+function offlineScan(bc, t) {
+  const p = base.find(x => x.barcode === bc);
+  if (!p) { flash('err', '📴 Offline', 'Cannot check this barcode without a connection', bc); return; }
+  if (gotSet.has(bc)) { flash('dup', '⚠️ ' + p.name, 'Already scanned (' + ((det[bc] || {}).d || 'this phone') + ')', bc); return; }
+  queue.push({ b: bc, t, d: dev, l: batch }); saveQ();
+  gotSet.add(bc); det[bc] = { t, d: dev }; merge(); render(); setSync('off');
+  flash('ok', '📴 ' + p.name, 'Saved offline, will sync when back online', bc);
+}
+async function submit(bc) {
+  bc = bc.trim(); const now = Date.now();
+  if (!bc || (bc === last && now - lastT < 2500)) return;
+  last = bc; lastT = now;
+  try {
+    if (queue.length) await flushQueue();
+    const r = await api('scan', { barcode: bc, device: dev, t: now });
+    if (r.status === 'ok') { gotSet.add(bc); det[bc] = { t: r.received_at, d: r.device }; merge(); render(); flash('ok', '🎉 ' + r.name, 'Sample received', bc); }
+    else if (r.status === 'dup') flash('dup', '⚠️ ' + r.name, 'Already scanned at ' + new Date(r.received_at).toLocaleTimeString() + ' by ' + (r.device || 'unknown'), bc);
+    else flash('err', '🤔 Not on the namelist', 'Check the label or ask the team leader', bc);
+    load();
+  } catch (e) { if (isNet(e)) offlineScan(bc, now); else flash('err', e.message); }
+}
+
+async function toggleCam() {
+  if (scanner) { await scanner.stop().catch(() => {}); scanner = null; $('#camBtn').textContent = 'Start camera'; $('#torch').hidden = true; try { wl && wl.release(); } catch (e) {} wl = null; return; }
+  try {
+    scanner = new Html5Qrcode('cam', { verbose: false, experimentalFeatures: { useBarCodeDetectorIfSupported: true } });
+    await scanner.start({ facingMode: 'environment' },
+      { fps: 15, qrbox: (w, h) => ({ width: Math.floor(w * 0.9), height: Math.floor(Math.min(h * 0.6, 220)) }) },
+      t => submit(t), () => {});
+    $('#camBtn').textContent = 'Stop camera';
+    try { wl = await navigator.wakeLock.request('screen'); } catch (e) {}
+    try { await scanner.applyVideoConstraints({ width: { ideal: 1920 }, height: { ideal: 1080 }, advanced: [{ focusMode: 'continuous' }] }); } catch (e) {}
+    try { if (scanner.getRunningTrackCameraCapabilities().torchFeature().isSupported()) $('#torch').hidden = false; } catch (e) {}
+  } catch (e) { scanner = null; flash('err', 'Camera unavailable', 'Allow camera access and open the page over HTTPS.'); }
+}
+
+function showTab(t) {
+  window.scrollTo(0, 0); cur = t;
+  document.querySelectorAll('nav button').forEach(b => b.setAttribute('aria-selected', b.dataset.t === t));
+  ['scan', 'pending', 'done', 'stats', 'setup'].forEach(id => $('#' + id).hidden = id !== t);
+  if (t !== 'scan' && scanner) toggleCam();
+  if (t === 'done' || t === 'stats') load();
+  if (t === 'scan') hwApply();
+  if (t === 'setup') loadBatches();
+}
+
+function parseCSV(t) {
+  t = t.replace(/^\uFEFF/, ''); const rows = []; let r = [], c = '', q = false;
+  for (let i = 0; i < t.length; i++) {
+    const ch = t[i];
+    if (q) { if (ch === '"') { if (t[i + 1] === '"') { c += '"'; i++; } else q = false; } else c += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === ',') { r.push(c); c = ''; }
+    else if (ch === '\n' || ch === '\r') { if (ch === '\r' && t[i + 1] === '\n') i++; r.push(c); rows.push(r); r = []; c = ''; }
+    else c += ch;
+  }
+  if (c || r.length) { r.push(c); rows.push(r); }
+  return rows.filter(r => r.some(x => x.trim()));
+}
+function toCSV(rows) { return rows.map(r => r.map(x => '"' + String(x ?? '').replace(/"/g, '""') + '"').join(',')).join('\r\n'); }
+function download(name, rows) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF' + toCSV(rows)], { type: 'text/csv' }));
+  a.download = name; a.click();
+}
+
+// ---- namelist upload with duplicate check ----
+function flagDups() {
+  const cn = cname(), bc = {}, nm = {}, have = new Map(!cn || slug(cn) === batch ? people.map(p => [p.barcode, p.name]) : []);
+  pr.forEach(r => { const b = r.b.trim(), n = r.n.trim().toLowerCase(); (bc[b] = bc[b] || []).push(r); (nm[n] = nm[n] || []).push(r); });
+  pr.forEach(r => {
+    const b = r.b.trim(), n = r.n.trim().toLowerCase(), m = [];
+    if (bc[b].length > 1) m.push('Same barcode as ' + bc[b].filter(x => x !== r).map(x => x.n).join(', '));
+    if (nm[n].length > 1) m.push('Same name appears ' + nm[n].length + ' times (barcodes: ' + nm[n].map(x => x.b).join(', ') + ')');
+    if (have.has(b)) m.push('Barcode already in the current list (' + have.get(b) + ')');
+    r.m = m.join('. ');
+  });
+}
+function renderRv() {
+  $('#rv').innerHTML = pr.map((r, i) => `<div class="rv${r.m ? ' f' : ''}"><input type="text" data-i="${i}" data-k="n" value="${esc(r.n)}"><input type="text" data-i="${i}" data-k="b" value="${esc(r.b)}"><button class="btn alt" data-x="${i}" aria-label="Remove row">✕</button>${r.m ? '<small>⚠️ ' + esc(r.m) + '</small>' : ''}</div>`).join('');
+  $('#rvb').style.display = pr.length ? 'flex' : 'none';
+  const dn = pr.filter(r => r.m).length;
+  $('#pv').textContent = pr.length ? pr.length + ' people ready.' + (dn ? ' ⚠️ ' + dn + ' need checking (shown first). Use ✕ to delete extras.' : ' No duplicates found.') : '';
+}
+$('#file').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  const rows = parseCSV(await f.text()); e.target.value = ''; if (!rows.length) return;
+  const h = rows[0].map(x => x.trim().toLowerCase()), ni = h.indexOf('name'), bi = h.indexOf('barcode'), hasH = ni > -1 && bi > -1;
+  const n = hasH ? ni : 0, b = hasH ? bi : 1;
+  pr = rows.slice(hasH ? 1 : 0).map(r => ({ n: (r[n] || '').trim(), b: (r[b] || '').trim() })).filter(p => p.n && p.b);
+  flagDups(); pr.sort((a, c) => (c.m ? 1 : 0) - (a.m ? 1 : 0)); renderRv();
+  const dn = pr.filter(r => r.m).length;
+  if (dn) flash('dup', '⚠️ ' + dn + ' rows need checking', 'Duplicates are highlighted at the top');
+};
+$('#rv').oninput = e => { const d = e.target.dataset; if (d.i !== undefined) pr[d.i][d.k] = e.target.value; };
+$('#rv').onclick = e => { const x = e.target.dataset.x; if (x !== undefined) { pr.splice(+x, 1); flagDups(); renderRv(); } };
+async function send(merge) {
+  const nm = cname(), prev = batch, target = nm ? slug(nm) : batch;
+  if ($('#cs').value === '__new' && !nm) { flash('err', 'Type a name first'); return; }
+  flagDups();
+  const list = pr.filter(r => r.n.trim() && r.b.trim()).map(r => ({ name: r.n.trim(), barcode: r.b.trim() }));
+  if (!list.length) return;
+  if (pr.some(r => /Same barcode/.test(r.m || '')) && !confirm('Some barcodes are still duplicated. Only one of each will be kept. Continue?')) { renderRv(); return; }
+  if (!merge && !confirm('Replace the whole list for "' + (nm || labels[batch] || batch) + '"? Received marks will be cleared.')) return;
+  batch = target;
+  try {
+    const label = nm || labels[target] || '';
+    const tx = $('#note').value.trim(), r = await api('upload', { people: list, merge, label, note: (noteDirty || tx) ? tx : undefined });
+    if (tx || noteDirty) notes[target] = tx; noteDirty = false;
+    labels[target] = label; localStorage.setItem('batch', batch);
+    if (target !== prev) { v = 0; base = []; det = {}; people = []; sel.clear(); }
+    pr = []; renderRv(); $('#pv').textContent = 'Uploaded to "' + (label || batch) + '". The list now has ' + r.count + ' people.';
+    load(); loadBatches();
+  } catch (e) { batch = prev; $('#pv').textContent = e.message; }
+}
+$('#pAdd').onclick = () => send(true);
+$('#pRep').onclick = () => send(false);
+
+// ---- barcode scanner (keyboard-style hardware scanners) ----
+function hwApply() { $('#man').inputMode = $('#hw').checked ? 'none' : 'text'; if ($('#hw').checked && cur === 'scan') $('#man').focus(); }
+$('#hw').checked = localStorage.getItem('hw') === '1';
+$('#hw').onchange = () => { localStorage.setItem('hw', $('#hw').checked ? '1' : '0'); hwApply(); };
+let buf = '', bt = 0;
+document.addEventListener('keydown', e => {
+  if (cur !== 'scan' || /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+  const t = Date.now(); if (t - bt > 100) buf = ''; bt = t;
+  if (e.key === 'Enter') { if (buf.length > 3) submit(buf); buf = ''; }
+  else if (e.key.length === 1) buf += e.key;
+});
+
+// ---- wiring ----
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => showTab(b.dataset.t));
+$('#camBtn').onclick = toggleCam;
+$('#rf').onclick = load;
+$('#torch').onclick = async () => { try { const t = scanner.getRunningTrackCameraCapabilities().torchFeature(); await t.apply(!t.value()); } catch (e) {} };
+$('#manBtn').onclick = () => { submit($('#man').value); $('#man').value = ''; if ($('#hw').checked) $('#man').focus(); };
+$('#man').onkeydown = e => { if (e.key === 'Enter') $('#manBtn').click(); };
+$('#q1').oninput = $('#q2').oninput = render;
+$('#code').value = code;
+window.addEventListener('online', load);
+function buildPickers(bs) {
+  const m = new Map();
+  PRESETS.forEach(n => m.set(slug(n), { name: slug(n), label: n, count: 0 }));
+  bs.forEach(b => m.set(b.name, { name: b.name, label: b.label || (m.get(b.name) || {}).label || b.name, count: b.count }));
+  if (!m.has(batch)) m.set(batch, { name: batch, label: labels[batch] || batch, count: 0 });
+  m.forEach(b => { labels[b.name] = b.label; });
+  bs.forEach(b => { notes[b.name] = b.note || ''; });
+  const all = [...m.values()];
+  if (document.activeElement !== $('#bq')) { $('#bq').innerHTML = all.map(b => `<option value="${esc(b.name)}">📋 ${esc(b.label)} (${b.count})</option>`).join(''); $('#bq').value = batch; }
+  if (document.activeElement !== $('#cs')) {
+    const keep = $('#cs').value;
+    $('#cs').innerHTML = all.map(b => `<option value="${esc(b.name)}">${esc(b.label)}</option>`).join('') + '<option value="__new">➕ Add new name…</option>';
+    $('#cs').value = [...$('#cs').options].some(o => o.value === keep) ? keep : batch;
+  }
+  if (!noteDirty && document.activeElement !== $('#note')) $('#note').value = $('#cs').value === '__new' ? '' : (notes[$('#cs').value] || '');
+}
+async function loadBatches() { try { buildPickers((await api('batches')).batches); } catch (e) { buildPickers([]); } }
+function cname() { const o = $('#cs').selectedOptions[0]; return !o ? '' : o.value === '__new' ? $('#company').value.trim() : o.textContent; }
+$('#cs').onchange = () => { $('#company').style.display = $('#cs').value === '__new' ? 'block' : 'none'; noteDirty = false; $('#note').value = $('#cs').value === '__new' ? '' : (notes[$('#cs').value] || ''); };
+$('#note').oninput = () => { noteDirty = true; };
+$('#saveNote').onclick = async () => {
+  const nm = cname(); if (!nm) { flash('err', 'Choose a name above first'); return; }
+  const prev = batch, txt = $('#note').value.trim(); batch = slug(nm);
+  try { await api('note', { note: txt, label: nm }); notes[batch] = txt; noteDirty = false; flash('ok', '📝 Remark saved'); } catch (e) { flash('err', e.message); }
+  batch = prev; load(); loadBatches();
+};
+buildPickers([]);
+$('#clr').onclick = async () => {
+  const nm = cname(); if (!nm) { flash('err', 'Choose a name above first'); return; }
+  if (!confirm('Delete the namelist and all scan records for "' + nm + '"? Export the received list first.')) return;
+  const prev = batch; batch = slug(nm);
+  try { await api('clear', {}); flash('ok', '🧹 Cleared "' + nm + '"'); } catch (e) { flash('err', e.message); }
+  batch = prev; v = 0; base = []; det = {}; people = []; sel.clear(); await load(); loadBatches();
+};
+$('#bq').onchange = () => { batch = $('#bq').value; localStorage.setItem('batch', batch); v = 0; base = []; det = {}; people = []; sel.clear(); render(); load(); };
+$('#saveCode').onclick = () => {
+  code = $('#code').value; localStorage.setItem('code', code);
+  v = 0; base = []; det = {}; people = []; sel.clear(); render(); load(); loadBatches(); flash('ok', '✅ Saved');
+};
+$('#l1').onchange = e => { const b = e.target.dataset.s; if (b === undefined) return; e.target.checked ? sel.add(b) : sel.delete(b); render(); };
+$('#selAll').onclick = () => { const all = shown.length && shown.every(p => sel.has(p.barcode)); shown.forEach(p => all ? sel.delete(p.barcode) : sel.add(p.barcode)); render(); };
+$('#rmSel').onclick = async () => {
+  if (!sel.size || !confirm('Remove ' + sel.size + ' people from the list (did not attend)?')) return;
+  try { await api('remove', { barcodes: [...sel] }); sel.clear(); load(); } catch (e) { flash('err', e.message); }
+};
+$('#l2').onclick = async e => {
+  const bc = e.target.dataset.undo;
+  if (bc && confirm('Remove the received mark for ' + bc + '?')) { await api('undo', { barcode: bc }).catch(() => {}); load(); }
+};
+$('#tpl').onclick = () => download('namelist-template.csv', [['name', 'barcode'], ['Example Name 1', 'A0001'], ['Example Name 2', 'A0002']]);
+$('#ex1').onclick = () => download('missing.csv', [['name', 'barcode', 'list', 'remark'], ...people.filter(p => !p.received_at).map(p => [p.name, p.barcode, labels[batch] || batch, notes[batch] || ''])]);
+$('#ex2').onclick = async () => { det = await api('details'); merge(); download('received.csv', [['name', 'barcode', 'received_at', 'device', 'list', 'remark'], ...people.filter(p => p.received_at).map(p => [p.name, p.barcode, new Date(p.received_at).toISOString(), p.device, labels[batch] || batch, notes[batch] || ''])]); };
+
+if (!code) showTab('setup');
+load(); if (code) loadBatches(); setInterval(() => { if (!document.hidden && code) loadBatches(); }, 15000);
+ setInterval(() => { if (!document.hidden) load(); }, 3000);
+</script>
+</body>
+</html>

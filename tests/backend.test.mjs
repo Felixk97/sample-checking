@@ -1,0 +1,30 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+// A fake strong-consistency store exercises API control flow and conditional write retries.
+const source=await readFile(new URL('../netlify/functions/api.mjs',import.meta.url),'utf8');
+const stores=new Map();let etag=0;
+globalThis.fakeGetStore=({name})=>{if(!stores.has(name))stores.set(name,new Map());const m=stores.get(name);return {get:async(k)=>structuredClone(m.get(k)?.data??null),getWithMetadata:async(k)=>structuredClone(m.get(k)??null),list:async({prefix=''}={})=>({blobs:[...m.keys()].filter(k=>k.startsWith(prefix)).map(key=>({key}))}),setJSON:async(k,data,opt={})=>{await Promise.resolve();const old=m.get(k);if(opt.onlyIfNew&&old||opt.onlyIfMatch&&old?.etag!==opt.onlyIfMatch)return {modified:false};m.set(k,{data:structuredClone(data),etag:String(++etag)});return {modified:true}}}};
+globalThis.Netlify={env:{get:k=>({ACCESS_CODE:'admin-test',STAFF_CODE:'staff-test'})[k]}};
+const {default:api}=await import('data:text/javascript;base64,'+Buffer.from(source.replace("import { getStore } from '@netlify/blobs';","const getStore=globalThis.fakeGetStore;")).toString('base64'));
+const call=async(route,body,role='admin-test',list='test')=>{const r=await api(new Request('https://test.example/api/'+route,{method:body?'POST':'GET',headers:{'x-code':role,'x-list':list,'content-type':'application/json'},body:body?JSON.stringify(body):undefined}));return {status:r.status,...await r.json()}};
+test('single-barcode flow, concurrency, generation, roles and event lifecycle',async()=>{
+ assert.equal((await call('list',null,'wrong')).status,401);
+ assert.equal((await call('upload',{people:[{name:'A',barcode:'001'}]},'staff-test')).status,403);
+ assert.equal((await call('upload',{people:[{name:'A',barcode:'001'},{name:'B',barcode:'002'},{name:'C',barcode:''}]})).count,3);
+ let state=await call('list');const g=state.generation;
+ const [a,b,c]=await Promise.all([call('scan',{barcode:'001',generation:g,op:'a'},'staff-test'),call('scan',{barcode:'001',generation:g,op:'b'},'staff-test'),call('scan',{barcode:'002',generation:g,op:'c'},'staff-test')]);
+ assert.deepEqual([a.status,b.status].sort(),['dup','ok']);assert.equal(c.status,'ok');
+ state=await call('list');assert.equal(state.got.length,2);
+ assert.equal((await call('scan',{barcode:'001',generation:g,op:'a'},'staff-test')).status,a.status);
+ assert.equal((await call('undo',{barcode:'001'},'staff-test')).status,403);
+ assert.equal((await call('assign',{from:'001',barcode:'003',markReceived:true})).ok,true);
+ state=await call('list');assert(state.got.includes('003'));assert(!state.got.includes('001'));
+ assert.equal((await call('scan',{barcode:'001',generation:g,op:'d'},'staff-test')).status,'dup');
+ const person=state.people.find(p=>p.name==='C');assert.equal((await call('remove',{barcode:person.id})).ok,true);assert((await call('list')).people.find(p=>p.name==='C').absent);
+ assert.equal((await call('attend',{barcode:person.id})).ok,true);assert(!(await call('list')).people.find(p=>p.name==='C').absent);
+ assert.equal((await call('archive',{})).ok,true);assert.equal((await call('scan',{barcode:'002',generation:g,op:'e'},'staff-test')).status,409);assert.equal((await call('list')).archived,true);
+ assert.equal((await call('restore',{})).ok,true);assert.equal((await call('upload',{people:[{name:'D',barcode:'001'}]})).ok,true);assert.equal((await call('scan',{barcode:'001',generation:g,op:'f'},'staff-test')).status,409);
+ assert.equal((await call('list')).got.length,0);assert.equal((await call('list')).audit.length>0,true);
+});
+test('legacy list and received records are migrated without deleting legacy data',async()=>{const meta=fakeGetStore({name:'meta'}),rec=fakeGetStore({name:'rec-old'});await meta.setJSON('namelist-old',{label:'Old',people:[{name:'Old name',barcode:'007'}]});await rec.setJSON('007',{t:123,d:'legacy'});const s=await call('list',null,'admin-test','old');assert.equal(s.label,'Old');assert.deepEqual(s.got,['007']);assert.equal(s.details['007'].d,'legacy');assert(await meta.get('namelist-old'));});
